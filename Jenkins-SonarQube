@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+
+    environment {
+        // Nom du serveur configuré dans Jenkins
+        SONARQUBE_SERVER = 'SonarQube'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Récupérer le code source depuis Git
+                git branch: 'main', url: 'https://github.com/utilisateur/mon-projet.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Compiler le projet avec Maven
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                // Exécuter l'analyse SonarQube
+                withSonarQubeEnv(SONARQUBE_SERVER) {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=mon-projet -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline terminé.'
+        }
+        failure {
+            echo 'Le pipeline a échoué.'
+        }
+    }
+}
+
